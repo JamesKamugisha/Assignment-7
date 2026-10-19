@@ -49,9 +49,103 @@ int main() {
     printf("> ");
     int choice = 0;
     scanf("%d", &choice);
+    if (choice == 1) {
+    printf("\n");
+}
 
     // TODO: implement client logic
 
+    struct message msg = {0};
+    int gameId;
+    int player;
+    int col;
+    socklen_t addr_len = sizeof(server_addr);
+
+     if (choice == 1) {
+        msg.type = 1;
+    }
+    else if (choice == 2) {
+        printf("Game ID? >");
+        scanf("%d", &gameId);
+        printf("\n");
+
+        msg.type = 2;
+        msg.gameId = gameId;
+    }
+    else {
+        close(sock_fd);
+        return 1;
+    }
+    sendto(sock_fd, &msg, sizeof(msg), 0,
+           (struct sockaddr *)&server_addr, addr_len);
+
+    recvfrom(sock_fd, &msg, sizeof(msg), 0,
+             (struct sockaddr *)&server_addr, &addr_len);
+
+    gameId = msg.gameId;
+    player = msg.player;
+
+    
+    while (1) {
+
+        printf("Current Game\n");
+        printf("---------------------\n");
+        printf("GameID: %d\n", gameId);
+        print_board(msg.board);
+
+        if (msg.winner != -1) {
+            if (msg.winner == player) {
+                printf("YOU WIN!\n");
+            }
+            else {
+                printf("YOU LOSE!\n");
+            }
+            break;
+        }
+
+        int full = 1;
+
+        for (int i = 0; i < 42; i++) {
+            if (msg.board[i] == -1) {
+                full = 0;
+                break;
+            }
+        }
+
+        if (full) {
+            printf("TIE\n");
+            break;
+        }
+
+        if (msg.players < 2 || msg.turn != player) {
+            printf("waiting for other player...\n\n");
+            fflush(stdout);
+        }
+        else {
+            printf("\nInput Move Row: > ");
+            fflush(stdout);
+
+            if (scanf("%d", &col) != 1) {
+                break;
+            }
+            printf("\n");
+       
+            struct message move = {0};
+            move.type = 3;
+            move.gameId = gameId;
+            move.player = player;
+            move.col = col;
+
+            sendto(sock_fd, &move, sizeof(move), 0,
+                   (struct sockaddr *)&server_addr,
+                   sizeof(server_addr));
+        }
+        if (recvfrom(sock_fd, &msg, sizeof(msg), 0,
+                     (struct sockaddr *)&server_addr,
+                     &addr_len) <= 0) {
+            break;
+        }
+    }
     close(sock_fd);
 
     return 0;
